@@ -1,9 +1,11 @@
+/* Reset e configurações globais -> Remove margens/paddings padrão e define box-sizing para facilitar o layout. */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/* Corpo da página -> Define a fonte base e cores do tema escuro. */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #040404;
@@ -11,6 +13,7 @@ body {
     color: #fff;
 }
 
+/* Cabeçalho Principal -> Contém o título do quadro e o botão de adicionar novo card. */
 .header {
     background: #262626;
     color: white;
@@ -25,6 +28,7 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* Botão de novo CARD -> Botão principal para adicionar novas tarefas, fica desabilitado quando atinge o limite.*/
 .header__button {
     background: white;
     color: #000000;
@@ -34,15 +38,17 @@ body {
     font-size: 14px;
     cursor: pointer;
     font-weight: 600;
+    transition: opacity 0.2s;
 }
 
 .header__button .icon {
     margin-right: 5px;
 }
 
-/* Flexbox para organizar as colunas lado a lado */
+/* Layout Principal do quadro -> Utilizamos CSS Grid para definir o layout principal e Flexbox para organizar o conteúdo interno das colunas. */
 .board {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 25px;
     padding: 25px;
     max-width: 1300px;
@@ -51,6 +57,10 @@ body {
     align-items: stretch;
 }
 
+/* Colunas di quadro -> Cada coluna representa um estado das tarefas:
+   - A Fazer (azul): tarefas pendentes
+   - Fazendo (laranja): tarefas em andamento
+   - Concluído (verde): tarefas finalizadas */
 .column {
     background: #262626;
     border: 1px solid #333;
@@ -62,6 +72,7 @@ body {
     max-width: 400px;
 }
 
+/* Cabeçalho da coluna: Mostra o título da coluna e contador de cards, a borda inferior indica visualmente a coluna. */
 .column__header {
     padding: 12px 15px;
     border-bottom: 3px solid #333;
@@ -70,12 +81,12 @@ body {
     align-items: center;
 }
 
-/* Cor da borda inferior de cada coluna */
+/* Cores específicas para cada coluna */
 .column[data-status="todo"] .column__header { border-bottom-color: #2196F3; }
 .column[data-status="doing"] .column__header { border-bottom-color: #FF9800; }
 .column[data-status="done"] .column__header { border-bottom-color: #4CAF50; }
 
-/* Cor da borda lateral de cada card conforme a coluna */
+/* Cor da borda lateral dos cards conforme a coluna */
 .column[data-status="todo"] .card { border-left-color: #2196F3; }
 .column[data-status="doing"] .card { border-left-color: #FF9800; }
 .column[data-status="done"] .card { border-left-color: #4CAF50; }
@@ -86,6 +97,7 @@ body {
     color: #fff;
 }
 
+/* Badge com contagem de cards na coluna */
 .column__count {
     font-size: 12px;
     background: #333;
@@ -95,6 +107,7 @@ body {
     font-weight: 600;
 }
 
+/* Container de Cards -> Área onde os cards são renderizados e Suporta scroll quando há muitos cards. */
 .card-container {
     flex: 1;
     padding: 10px;
@@ -109,7 +122,7 @@ body {
     border-radius: 4px;
 }
 
-/* Mensagem exibida quando a coluna não tem cards */
+/* Mensagem de coluna vazia: É Exibida quando não há cards na coluna. */
 .empty-message {
     text-align: center;
     color: #555;
@@ -120,6 +133,7 @@ body {
     user-select: none;
 }
 
+/* Card(tarefa): Cada card representa uma tarefa no quadro, possui efeito de arrastar (drag) e animações.*/
 .card {
     background: #1a1a1a;
     border: 1px solid #444;
@@ -134,12 +148,13 @@ body {
     animation: cardEntrada 0.2s ease;
 }
 
-/* Animação ao criar um novo card */
+/* Animação de entrada ao criar novo card */
 @keyframes cardEntrada {
     from { opacity: 0; transform: translateY(-6px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Efeito de hover para destaque visual */
 .card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -147,12 +162,13 @@ body {
 
 .card:active { cursor: grabbing; }
 
+/* Estado durante o arrastar */
 .card.dragging {
     opacity: 0.4;
     transform: scale(0.98);
 }
 
-/* Botão de excluir visível apenas no hover do card */
+/* Botão de excluir card: Aparece apenas no hover do card, remove a tarefa após confirmação.*/
 .card__delete {
     position: absolute;
     top: 5px;
@@ -175,6 +191,7 @@ body {
 .card:hover .card__delete { opacity: 1; }
 .card__delete:hover { background: #d32f2f; }
 
+/* Modal de criação e edição de card: Overlay escurece o fundo e centraliza o modal e usado para criar novas tarefas ou editar existentes.*/
 .modal-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -190,6 +207,7 @@ body {
 
 .modal-overlay.active { opacity: 1; visibility: visible; }
 
+/* Container do modal com animação de escala */
 .modal {
     background: #262626;
     border: 1px solid #333;
@@ -209,6 +227,7 @@ body {
     color: #fff;
 }
 
+/* Campo de entrada de texto do modal */
 .modal__input {
     width: 100%;
     padding: 8px;
@@ -224,6 +243,7 @@ body {
 
 .modal__input:focus { outline: none; border-color: #4CAF50; }
 
+/* Dica sobre quantidade mínima de caracteres */
 .modal__hint {
     font-size: 11px;
     color: #666;
@@ -231,6 +251,7 @@ body {
     margin-bottom: 12px;
 }
 
+/* Botões de ação do modal */
 .modal__actions {
     display: flex;
     gap: 10px;
@@ -246,12 +267,15 @@ body {
     font-family: inherit;
 }
 
+/* Botão primário (Salvar) */
 .modal__button--primary { background: #4CAF50; color: white; }
 .modal__button--primary:hover { background: #43a047; }
+
+/* Botão secundário (Cancelar) */
 .modal__button--secondary { background: #444; color: #fff; }
 .modal__button--secondary:hover { background: #555; }
 
-/* Notificação que aparece na parte inferior da tela */
+/* NOTIFICAÇÕES TOAST: Mensagens de feedback exibidas na parte inferior da tela (ex: erros de validação).*/
 .kanban-notify {
     position: fixed;
     bottom: 30px;
@@ -271,13 +295,17 @@ body {
     box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
 
+/* Estado visível da notificação */
 .kanban-notify--visible {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
 
-/* Layout responsivo para telas menores (celular) */
+/*  Responsividade: Ajusta o layout para telas menores (celulares) */
 @media (max-width: 768px) {
-    .board { flex-direction: column; padding: 10px; }
+    .board {
+        grid-template-columns: 1fr;
+        padding: 10px;
+    }
     .column { min-height: 250px; max-width: 100%; }
 }
