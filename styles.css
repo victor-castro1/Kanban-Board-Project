@@ -8,7 +8,7 @@
 }
 
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #040404;
     min-height: 100vh;
     color: #fff;
@@ -22,11 +22,13 @@ body {
     color: white;
     padding: 20px;
     text-align: center;
+    border-bottom: 1px solid #333;
 }
 
 .header__title {
     font-size: 24px;
     margin-bottom: 10px;
+    letter-spacing: 0.5px;
 }
 
 .header__button {
@@ -37,6 +39,17 @@ body {
     border-radius: 4px;
     font-size: 14px;
     cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    font-weight: 600;
+}
+
+.header__button:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+}
+
+.header__button:active {
+    transform: translateY(0);
 }
 
 .header__button .icon {
@@ -62,17 +75,21 @@ body {
 .column {
     background: #262626;
     border: 1px solid #333;
-    border-radius: 4px;
+    border-radius: 6px;
     flex: 1;
     min-height: 450px;
     display: flex;
     flex-direction: column;
     max-width: 400px;
+    transition: box-shadow 0.2s;
 }
 
 .column__header {
-    padding: 12px;
+    padding: 12px 15px;
     border-bottom: 3px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .column[data-status="todo"] .column__header {
@@ -107,13 +124,11 @@ body {
 
 .column__count {
     font-size: 12px;
+    background: #333;
     color: #aaa;
-}
-
-.column__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
 }
 
 /* ===========================================
@@ -124,6 +139,23 @@ body {
     padding: 10px;
     overflow-y: auto;
     min-height: 200px;
+    transition: background 0.2s;
+}
+
+.card-container.drag-over {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+/* Mensagem de coluna vazia */
+.empty-message {
+    text-align: center;
+    color: #555;
+    font-size: 50px;
+    font-weight: bold;
+    padding: 275px 10px;
+    pointer-events: none;
+    user-select: none;
 }
 
 /* ===========================================
@@ -139,6 +171,24 @@ body {
     cursor: grab;
     position: relative;
     color: #fff;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    animation: cardEntrada 0.2s ease;
+}
+
+@keyframes cardEntrada {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .card:active {
@@ -146,7 +196,8 @@ body {
 }
 
 .card.dragging {
-    opacity: 0.5;
+    opacity: 0.4;
+    transform: scale(0.98);
 }
 
 /* ===========================================
@@ -165,10 +216,19 @@ body {
     font-size: 12px;
     cursor: pointer;
     opacity: 0;
+    transition: opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 
 .card:hover .card__delete {
     opacity: 1;
+}
+
+.card__delete:hover {
+    background: #d32f2f;
 }
 
 /* ===========================================
@@ -187,6 +247,7 @@ body {
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
 }
 
 .modal-overlay.active {
@@ -196,10 +257,17 @@ body {
 
 .modal {
     background: #262626;
-    border-radius: 4px;
+    border: 1px solid #333;
+    border-radius: 6px;
     padding: 20px;
     width: 90%;
     max-width: 350px;
+    transform: scale(0.95);
+    transition: transform 0.2s;
+}
+
+.modal-overlay.active .modal {
+    transform: scale(1);
 }
 
 .modal__title {
@@ -215,9 +283,10 @@ body {
     border-radius: 4px;
     font-size: 14px;
     margin-bottom: 15px;
-    font-family: Arial, sans-serif;
+    font-family: inherit;
     background: #1a1a1a;
     color: #fff;
+    transition: border-color 0.15s;
 }
 
 .modal__input:focus {
@@ -237,6 +306,12 @@ body {
     border-radius: 4px;
     font-size: 14px;
     cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    font-family: inherit;
+}
+
+.modal__button:active {
+    transform: scale(0.97);
 }
 
 .modal__button--primary {
@@ -244,9 +319,17 @@ body {
     color: white;
 }
 
+.modal__button--primary:hover {
+    background: #43a047;
+}
+
 .modal__button--secondary {
     background: #444;
     color: #fff;
+}
+
+.modal__button--secondary:hover {
+    background: #555;
 }
 
 /* ===========================================
@@ -260,5 +343,6 @@ body {
 
     .column {
         min-height: 250px;
+        max-width: 100%;
     }
 }

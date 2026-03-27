@@ -9,31 +9,23 @@
  * - Persistência com LocalStorage
  * - Design responsivo
  * - Contador de cards por coluna
+ * - Mensagem de coluna vazia
+ * - Salvar com Enter
  *
- * Autor: Equipe de Desenvolvimento
- * Versão: 1.0.0
+ * Versão: 1.1.0
  */
 
 // ===========================================
 // MÓDULO: Gerenciamento de Estado
 // ===========================================
 const StateManager = {
-    /**
-     * Chave para armazenamento no LocalStorage
-     */
     STORAGE_KEY: 'kanban_board_state',
 
-    /**
-     * Estado inicial do quadro
-     */
     state: {
         cards: [],
         nextId: 1
     },
 
-    /**
-     * Carrega o estado do LocalStorage
-     */
     load() {
         try {
             const saved = localStorage.getItem(this.STORAGE_KEY);
@@ -47,9 +39,6 @@ const StateManager = {
         return this.state;
     },
 
-    /**
-     * Salva o estado no LocalStorage
-     */
     save() {
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.state));
@@ -58,9 +47,6 @@ const StateManager = {
         }
     },
 
-    /**
-     * Adiciona um novo card ao estado
-     */
     addCard(text, status = 'todo') {
         const card = {
             id: this.state.nextId++,
@@ -73,9 +59,6 @@ const StateManager = {
         return card;
     },
 
-    /**
-     * Atualiza um card existente
-     */
     updateCard(id, newText) {
         const card = this.state.cards.find(c => c.id === id);
         if (card) {
@@ -86,9 +69,6 @@ const StateManager = {
         return card;
     },
 
-    /**
-     * Move um card para outra coluna
-     */
     moveCard(id, newStatus) {
         const card = this.state.cards.find(c => c.id === id);
         if (card) {
@@ -99,9 +79,6 @@ const StateManager = {
         return card;
     },
 
-    /**
-     * Remove um card
-     */
     deleteCard(id) {
         const index = this.state.cards.findIndex(c => c.id === id);
         if (index !== -1) {
@@ -110,9 +87,6 @@ const StateManager = {
         }
     },
 
-    /**
-     * Obtém cards por status
-     */
     getCardsByStatus(status) {
         return this.state.cards.filter(c => c.status === status);
     }
@@ -122,27 +96,18 @@ const StateManager = {
 // MÓDULO: Gerenciamento do DOM
 // ===========================================
 const DOMManager = {
-    /**
-     * Referências aos containers de cards
-     */
     containers: {
         todo: null,
         doing: null,
         done: null
     },
 
-    /**
-     * Referências aos contadores
-     */
     counters: {
         todo: null,
         doing: null,
         done: null
     },
 
-    /**
-     * Inicializa as referências do DOM
-     */
     init() {
         this.containers = {
             todo: document.getElementById('todo'),
@@ -157,9 +122,6 @@ const DOMManager = {
         };
     },
 
-    /**
-     * Atualiza o contador de uma coluna
-     */
     updateCounter(status) {
         const count = StateManager.getCardsByStatus(status).length;
         if (this.counters[status]) {
@@ -167,9 +129,6 @@ const DOMManager = {
         }
     },
 
-    /**
-     * Atualiza todos os contadores
-     */
     updateAllCounters() {
         Object.keys(this.counters).forEach(status => {
             this.updateCounter(status);
@@ -177,28 +136,48 @@ const DOMManager = {
     },
 
     /**
-     * Limpa todos os cards do DOM
+     * Atualiza mensagem de coluna vazia
      */
+    updateEmptyMessage(status) {
+        const container = this.containers[status];
+        if (!container) return;
+
+        const existing = container.querySelector('.empty-message');
+        const count = StateManager.getCardsByStatus(status).length;
+
+        if (count === 0) {
+            if (!existing) {
+                const msg = document.createElement('p');
+                msg.className = 'empty-message';
+                msg.textContent = 'Nenhum card aqui';
+                container.appendChild(msg);
+            }
+        } else {
+            if (existing) existing.remove();
+        }
+    },
+
+    updateAllEmptyMessages() {
+        ['todo', 'doing', 'done'].forEach(status => {
+            this.updateEmptyMessage(status);
+        });
+    },
+
     clearAllCards() {
         Object.values(this.containers).forEach(container => {
             container.innerHTML = '';
         });
     },
 
-    /**
-     * Renderiza todos os cards do estado
-     */
     renderAllCards() {
         this.clearAllCards();
         StateManager.state.cards.forEach(card => {
             this.renderCard(card);
         });
         this.updateAllCounters();
+        this.updateAllEmptyMessages();
     },
 
-    /**
-     * Cria um elemento HTML para um card
-     */
     createCardElement(card) {
         const cardElement = document.createElement('div');
         cardElement.className = 'card';
@@ -206,12 +185,10 @@ const DOMManager = {
         cardElement.draggable = true;
         cardElement.setAttribute('data-id', card.id);
 
-        // Texto do card
         const textSpan = document.createElement('span');
         textSpan.className = 'card__text';
         textSpan.textContent = card.text;
 
-        // Botão de excluir
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'card__delete';
         deleteBtn.innerHTML = '&times;';
@@ -227,9 +204,6 @@ const DOMManager = {
         return cardElement;
     },
 
-    /**
-     * Renderiza um card no DOM
-     */
     renderCard(card) {
         const cardElement = this.createCardElement(card);
         const container = this.containers[card.status];
@@ -246,16 +220,9 @@ const DOMManager = {
 // MÓDULO: Gerenciamento de Drag and Drop
 // ===========================================
 const DragDropManager = {
-    /**
-     * Card sendo arrastado atualmente
-     */
     draggedCard: null,
 
-    /**
-     * Inicializa os eventos de drag and drop
-     */
     init() {
-        // Configurar drop zones nos containers
         Object.values(DOMManager.containers).forEach(container => {
             container.addEventListener('dragover', this.handleDragOver.bind(this));
             container.addEventListener('dragenter', this.handleDragEnter.bind(this));
@@ -264,17 +231,11 @@ const DragDropManager = {
         });
     },
 
-    /**
-     * Configura eventos de drag em um card
-     */
     setupCardDragEvents(cardElement) {
         cardElement.addEventListener('dragstart', this.handleDragStart.bind(this));
         cardElement.addEventListener('dragend', this.handleDragEnd.bind(this));
     },
 
-    /**
-     * Início do arraste
-     */
     handleDragStart(e) {
         this.draggedCard = e.target;
         e.target.classList.add('dragging');
@@ -282,41 +243,30 @@ const DragDropManager = {
         e.dataTransfer.setData('text/plain', e.target.getAttribute('data-id'));
     },
 
-    /**
-     * Fim do arraste
-     */
     handleDragEnd(e) {
         e.target.classList.remove('dragging');
         this.draggedCard = null;
 
-        // Remover classe de destaque de todos os containers
         Object.values(DOMManager.containers).forEach(container => {
             container.classList.remove('drag-over');
         });
     },
 
-    /**
-     * Enquanto arrasta sobre um container
-     */
     handleDragOver(e) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
     },
 
-    /**
-     * Quando entra em um container
-     */
     handleDragEnter(e) {
         e.preventDefault();
+        // Remove de todos primeiro, depois aplica só no destino
+        Object.values(DOMManager.containers).forEach(c => c.classList.remove('drag-over'));
         const container = e.target.closest('.card-container');
         if (container) {
             container.classList.add('drag-over');
         }
     },
 
-    /**
-     * Quando sai de um container
-     */
     handleDragLeave(e) {
         const container = e.target.closest('.card-container');
         if (container && !container.contains(e.relatedTarget)) {
@@ -324,27 +274,20 @@ const DragDropManager = {
         }
     },
 
-    /**
-     * Quando solta em um container
-     */
     handleDrop(e) {
         e.preventDefault();
         const container = e.target.closest('.card-container');
 
         if (container && this.draggedCard) {
             const cardId = parseInt(this.draggedCard.getAttribute('data-id'));
-            const newStatus = container.id; // 'todo', 'doing', ou 'done'
+            const newStatus = container.id;
 
-            // Mover card no estado
             StateManager.moveCard(cardId, newStatus);
-
-            // Mover card no DOM
             container.appendChild(this.draggedCard);
 
-            // Atualizar contadores
             DOMManager.updateAllCounters();
+            DOMManager.updateAllEmptyMessages();
 
-            // Remover classe de destaque
             container.classList.remove('drag-over');
         }
     }
@@ -354,24 +297,14 @@ const DragDropManager = {
 // MÓDULO: Gerenciamento de Cards
 // ===========================================
 const CardManager = {
-    /**
-     * Modal de edição/criação
-     */
     modal: null,
 
-    /**
-     * Inicializa o gerenciador de cards
-     */
     init() {
         this.setupModal();
         this.setupNewCardButton();
     },
 
-    /**
-     * Configura o modal para criar/editar cards
-     */
     setupModal() {
-        // Criar estrutura do modal
         const modalHTML = `
             <div class="modal-overlay" id="modalOverlay">
                 <div class="modal">
@@ -395,7 +328,6 @@ const CardManager = {
             btnSave: document.getElementById('btnSalvar')
         };
 
-        // Eventos do modal
         this.modal.btnCancel.addEventListener('click', () => this.closeModal());
         this.modal.btnSave.addEventListener('click', () => this.handleSave());
         this.modal.overlay.addEventListener('click', (e) => {
@@ -404,17 +336,18 @@ const CardManager = {
             }
         });
 
-        // Fechar com ESC
+        // Fechar com ESC ou salvar com Enter
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.modal.overlay.classList.contains('active')) {
+            if (!this.modal.overlay.classList.contains('active')) return;
+
+            if (e.key === 'Escape') {
                 this.closeModal();
+            } else if (e.key === 'Enter') {
+                this.handleSave();
             }
         });
     },
 
-    /**
-     * Abre o modal
-     */
     openModal(title = 'Novo Card', defaultText = '', editId = null) {
         this.modal.title.textContent = title;
         this.modal.input.value = defaultText;
@@ -423,41 +356,34 @@ const CardManager = {
         this.modal.input.focus();
     },
 
-    /**
-     * Fecha o modal
-     */
     closeModal() {
         this.modal.overlay.classList.remove('active');
         this.modal.input.value = '';
         this.modal.input.removeAttribute('data-edit-id');
     },
 
-    /**
-     * Manipula o salvamento do modal
-     */
     handleSave() {
         const text = this.modal.input.value.trim();
         const editId = this.modal.input.getAttribute('data-edit-id');
 
         if (!text) {
             this.modal.input.focus();
+            this.modal.input.style.borderColor = '#f44336';
+            setTimeout(() => {
+                this.modal.input.style.borderColor = '';
+            }, 1000);
             return;
         }
 
         if (editId) {
-            // Editar card existente
             this.editCard(parseInt(editId), text);
         } else {
-            // Criar novo card
             this.createCard(text);
         }
 
         this.closeModal();
     },
 
-    /**
-     * Configura o botão de novo card
-     */
     setupNewCardButton() {
         const btnNovoCard = document.getElementById('btnNovoCard');
         if (btnNovoCard) {
@@ -467,13 +393,8 @@ const CardManager = {
         }
     },
 
-    /**
-     * Configura eventos de clique em um card
-     */
     setupCardClickEvents(cardElement, cardId) {
-        // Duplo clique para editar
         cardElement.addEventListener('dblclick', (e) => {
-            // Ignorar se clicou no botão de excluir
             if (e.target.classList.contains('card__delete')) return;
 
             const card = StateManager.state.cards.find(c => c.id === cardId);
@@ -483,18 +404,13 @@ const CardManager = {
         });
     },
 
-    /**
-     * Cria um novo card
-     */
     createCard(text) {
         const card = StateManager.addCard(text);
         DOMManager.renderCard(card);
         DOMManager.updateCounter(card.status);
+        DOMManager.updateEmptyMessage(card.status);
     },
 
-    /**
-     * Edita um card existente
-     */
     editCard(id, newText) {
         const card = StateManager.updateCard(id, newText);
         if (card) {
@@ -505,16 +421,24 @@ const CardManager = {
         }
     },
 
-    /**
-     * Exclui um card
-     */
     deleteCard(id) {
-        StateManager.deleteCard(id);
         const cardElement = document.getElementById(`card-${id}`);
+        const status = StateManager.state.cards.find(c => c.id === id)?.status;
+
         if (cardElement) {
-            cardElement.remove();
+            cardElement.style.transition = 'opacity 0.15s, transform 0.15s';
+            cardElement.style.opacity = '0';
+            cardElement.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                cardElement.remove();
+                StateManager.deleteCard(id);
+                DOMManager.updateAllCounters();
+                if (status) DOMManager.updateEmptyMessage(status);
+            }, 150);
+        } else {
+            StateManager.deleteCard(id);
+            DOMManager.updateAllCounters();
         }
-        DOMManager.updateAllCounters();
     }
 };
 
@@ -522,21 +446,13 @@ const CardManager = {
 // INICIALIZAÇÃO DA APLICAÇÃO
 // ===========================================
 const App = {
-    /**
-     * Inicializa a aplicação
-     */
     init() {
         console.log('🚀 Iniciando Quadro Kanban...');
 
-        // Carregar estado salvo
         StateManager.load();
-
-        // Inicializar gerenciadores
         DOMManager.init();
         DragDropManager.init();
         CardManager.init();
-
-        // Renderizar cards salvos
         DOMManager.renderAllCards();
 
         console.log('✅ Quadro Kanban inicializado com sucesso!');
@@ -544,12 +460,10 @@ const App = {
     }
 };
 
-// Iniciar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 });
 
-// Expor para debug (opcional)
 window.KanbanApp = {
     StateManager,
     DOMManager,
