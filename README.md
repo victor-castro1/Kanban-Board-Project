@@ -1,5 +1,7 @@
 # Kanban Board - Quadro de Tarefas
 
+https://github.com/user-attachments/assets/7c8f59e9-67d9-43ef-91ab-43896e1818b3
+
 ## O que é isso aqui?
 
 É um **Quadro Kanban** bem simples e direto. Basicamente, é como aquelas anotações com Post-its que você cola na parede, mas digitalmente. Você organiza suas tarefas em 3 colunas:
