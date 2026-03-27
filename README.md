@@ -40,4 +40,4 @@ Bem simples mesmo:
 - **JavaScript puro** - Não há uma biblioteca externa;
 
 
-**Aproveita seu novo quadro Kanban!** 
+**Aproveita o quadro Kanban!** 
