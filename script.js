@@ -588,7 +588,7 @@ const CardManager = {
     /** Configura eventos de clique nos cards (edição)
      * @param {HTMLElement} el - Elemento do card
      * @param {number} cardId - ID do card */
-    
+
     setupCardClickEvents(el, cardId) {
         // Duplo clique para editar
         el.addEventListener('dblclick', e => {
@@ -605,7 +605,6 @@ const CardManager = {
     /**
      * Cria um novo card
      * @param {string} text - Texto do card */
-
     createCard(text) {
         const card = StateManager.addCard(text);
         DOMManager.renderCard(card);
@@ -617,7 +616,6 @@ const CardManager = {
     /** Edita um card existente
      * @param {number} id - ID do card
      * @param {string} newText - Novo texto */
-
     editCard(id, newText) {
         const card = StateManager.updateCard(id, newText);
         if (card) {
@@ -630,7 +628,6 @@ const CardManager = {
 
     /** RN04 - Exclui um card com confirmação
      * @param {number} id - ID do card */
-
     deleteCard(id) {
         // Pede confirmação antes de excluir
         if (!confirm('Tem certeza que deseja excluir este card?')) return;
