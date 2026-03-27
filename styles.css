@@ -1,0 +1,264 @@
+/* ===========================================
+   RESET E BASE
+   =========================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #040404;
+    min-height: 100vh;
+    color: #fff;
+}
+
+/* ===========================================
+   HEADER
+   =========================================== */
+.header {
+    background: #262626;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+.header__title {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.header__button {
+    background: white;
+    color: #4CAF50;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.header__button .icon {
+    margin-right: 5px;
+}
+
+/* ===========================================
+   BOARD (Container Principal)
+   =========================================== */
+.board {
+    display: flex;
+    gap: 25px;
+    padding: 25px;
+    max-width: 1300px;
+    margin: 0 auto;
+    min-height: calc(100vh - 120px);
+    align-items: stretch;
+}
+
+/* ===========================================
+   COLUNAS
+   =========================================== */
+.column {
+    background: #262626;
+    border: 1px solid #333;
+    border-radius: 4px;
+    flex: 1;
+    min-height: 450px;
+    display: flex;
+    flex-direction: column;
+    max-width: 400px;
+}
+
+.column__header {
+    padding: 12px;
+    border-bottom: 3px solid #333;
+}
+
+.column[data-status="todo"] .column__header {
+    border-bottom-color: #2196F3;
+}
+
+.column[data-status="doing"] .column__header {
+    border-bottom-color: #FF9800;
+}
+
+.column[data-status="done"] .column__header {
+    border-bottom-color: #4CAF50;
+}
+
+.column[data-status="todo"] .card {
+    border-left-color: #2196F3;
+}
+
+.column[data-status="doing"] .card {
+    border-left-color: #FF9800;
+}
+
+.column[data-status="done"] .card {
+    border-left-color: #4CAF50;
+}
+
+.column__title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.column__count {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.column__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ===========================================
+   CONTAINER DE CARDS
+   =========================================== */
+.card-container {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    min-height: 200px;
+}
+
+/* ===========================================
+   CARDS
+   =========================================== */
+.card {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-left: 4px solid #4CAF50;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: grab;
+    position: relative;
+    color: #fff;
+}
+
+.card:active {
+    cursor: grabbing;
+}
+
+.card.dragging {
+    opacity: 0.5;
+}
+
+/* ===========================================
+   BOTÃO DE EXCLUIR
+   =========================================== */
+.card__delete {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+}
+
+.card:hover .card__delete {
+    opacity: 1;
+}
+
+/* ===========================================
+   MODAL
+   =========================================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background: #262626;
+    border-radius: 4px;
+    padding: 20px;
+    width: 90%;
+    max-width: 350px;
+}
+
+.modal__title {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: #fff;
+}
+
+.modal__input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 15px;
+    font-family: Arial, sans-serif;
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.modal__input:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.modal__actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.modal__button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.modal__button--primary {
+    background: #4CAF50;
+    color: white;
+}
+
+.modal__button--secondary {
+    background: #444;
+    color: #fff;
+}
+
+/* ===========================================
+   RESPONSIVIDADE
+   =========================================== */
+@media (max-width: 768px) {
+    .board {
+        flex-direction: column;
+        padding: 10px;
+    }
+
+    .column {
+        min-height: 250px;
+    }
+}
