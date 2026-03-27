@@ -1,59 +1,94 @@
-/**
- * ===========================================
- * QUADRO KANBAN - Sistema de Gerenciamento de Tarefas
- * ===========================================
- *
- * Funcionalidades:
- * - Criar, editar e excluir cards
- * - Arrastar e soltar (Drag and Drop)
- * - Persistência com LocalStorage
- * - Design responsivo
- * - Contador de cards por coluna
- * - Mensagem de coluna vazia
- * - Salvar com Enter
- *
- * Versão: 1.1.0
- */
+// Regras de negócio da aplicação
+const BusinessRules = {
+    WIP_LIMIT: 3,        // Máximo de cards na coluna "Fazendo"
+    MAX_CARDS: 20,       // Máximo de cards no quadro
+    MIN_TITLE_LENGTH: 3, // Mínimo de caracteres no título
+    COLUMN_ORDER: ['todo', 'doing', 'done'],
 
-// ===========================================
-// MÓDULO: Gerenciamento de Estado
-// ===========================================
+    // RN01 - Limite de cards em progresso (WIP)
+    canMoveToColumn(newStatus) {
+        if (newStatus !== 'doing') return { ok: true };
+        const count = StateManager.getCardsByStatus('doing').length;
+        if (count >= this.WIP_LIMIT)
+            return { ok: false, message: `Limite atingido! A coluna "Fazendo" permite no máximo ${this.WIP_LIMIT} cards. Conclua um card antes de adicionar outro.` };
+        return { ok: true };
+    },
+
+    // RN02 - Título deve ter mínimo de caracteres
+    validateTitle(text) {
+        if (text.length < this.MIN_TITLE_LENGTH)
+            return { ok: false, message: `O título deve ter no mínimo ${this.MIN_TITLE_LENGTH} caracteres.` };
+        return { ok: true };
+    },
+
+    // RN03 - Card não pode voltar para coluna anterior
+    canMoveBackward(currentStatus, newStatus) {
+        const currentIndex = this.COLUMN_ORDER.indexOf(currentStatus);
+        const newIndex = this.COLUMN_ORDER.indexOf(newStatus);
+        if (newIndex < currentIndex)
+            return { ok: false, message: 'Um card não pode voltar para uma coluna anterior.' };
+        return { ok: true };
+    },
+
+    // RN05 - Não permite título duplicado na mesma coluna
+    hasDuplicateTitle(text, status, excludeId = null) {
+        const duplicate = StateManager.getCardsByStatus(status)
+            .find(c => c.text.toLowerCase() === text.toLowerCase() && c.id !== excludeId);
+        if (duplicate)
+            return { ok: false, message: 'Já existe um card com este título nesta coluna.' };
+        return { ok: true };
+    },
+
+    // RN06 - Limite total de cards no quadro
+    canAddCard() {
+        if (StateManager.state.cards.length >= this.MAX_CARDS)
+            return { ok: false, message: `Limite de ${this.MAX_CARDS} cards atingido! Exclua um card para adicionar outro.` };
+        return { ok: true };
+    }
+};
+
+// Exibe notificações visuais na tela
+const Notify = {
+    show(message) {
+        const existing = document.querySelector('.kanban-notify');
+        if (existing) existing.remove();
+
+        const notify = document.createElement('div');
+        notify.className = 'kanban-notify';
+        notify.textContent = message;
+        document.body.appendChild(notify);
+
+        notify.offsetHeight;
+        notify.classList.add('kanban-notify--visible');
+
+        setTimeout(() => {
+            notify.classList.remove('kanban-notify--visible');
+            setTimeout(() => notify.remove(), 300);
+        }, 3000);
+    }
+};
+
+// Gerencia o estado da aplicação e persistência no LocalStorage
 const StateManager = {
     STORAGE_KEY: 'kanban_board_state',
-
-    state: {
-        cards: [],
-        nextId: 1
-    },
+    state: { cards: [], nextId: 1 },
 
     load() {
         try {
             const saved = localStorage.getItem(this.STORAGE_KEY);
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                this.state = parsed;
-            }
-        } catch (error) {
-            console.warn('Erro ao carregar estado:', error);
-        }
+            if (saved) this.state = JSON.parse(saved);
+        } catch (e) {}
         return this.state;
     },
 
     save() {
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.state));
-        } catch (error) {
-            console.warn('Erro ao salvar estado:', error);
-        }
+        } catch (e) {}
     },
 
     addCard(text, status = 'todo') {
-        const card = {
-            id: this.state.nextId++,
-            text: text,
-            status: status,
-            createdAt: new Date().toISOString()
-        };
+        const card = { id: this.state.nextId++, text, status, createdAt: new Date().toISOString() };
         this.state.cards.push(card);
         this.save();
         return card;
@@ -61,30 +96,19 @@ const StateManager = {
 
     updateCard(id, newText) {
         const card = this.state.cards.find(c => c.id === id);
-        if (card) {
-            card.text = newText;
-            card.updatedAt = new Date().toISOString();
-            this.save();
-        }
+        if (card) { card.text = newText; card.updatedAt = new Date().toISOString(); this.save(); }
         return card;
     },
 
     moveCard(id, newStatus) {
         const card = this.state.cards.find(c => c.id === id);
-        if (card) {
-            card.status = newStatus;
-            card.movedAt = new Date().toISOString();
-            this.save();
-        }
+        if (card) { card.status = newStatus; card.movedAt = new Date().toISOString(); this.save(); }
         return card;
     },
 
     deleteCard(id) {
         const index = this.state.cards.findIndex(c => c.id === id);
-        if (index !== -1) {
-            this.state.cards.splice(index, 1);
-            this.save();
-        }
+        if (index !== -1) { this.state.cards.splice(index, 1); this.save(); }
     },
 
     getCardsByStatus(status) {
@@ -92,21 +116,10 @@ const StateManager = {
     }
 };
 
-// ===========================================
-// MÓDULO: Gerenciamento do DOM
-// ===========================================
+// Gerencia a manipulação do DOM
 const DOMManager = {
-    containers: {
-        todo: null,
-        doing: null,
-        done: null
-    },
-
-    counters: {
-        todo: null,
-        doing: null,
-        done: null
-    },
+    containers: { todo: null, doing: null, done: null },
+    counters: { todo: null, doing: null, done: null },
 
     init() {
         this.containers = {
@@ -114,7 +127,6 @@ const DOMManager = {
             doing: document.getElementById('doing'),
             done: document.getElementById('done')
         };
-
         this.counters = {
             todo: document.getElementById('count-todo'),
             doing: document.getElementById('count-doing'),
@@ -123,117 +135,107 @@ const DOMManager = {
     },
 
     updateCounter(status) {
-        const count = StateManager.getCardsByStatus(status).length;
-        if (this.counters[status]) {
-            this.counters[status].textContent = count;
-        }
+        if (this.counters[status])
+            this.counters[status].textContent = StateManager.getCardsByStatus(status).length;
     },
 
     updateAllCounters() {
-        Object.keys(this.counters).forEach(status => {
-            this.updateCounter(status);
-        });
+        Object.keys(this.counters).forEach(s => this.updateCounter(s));
     },
 
-    /**
-     * Atualiza mensagem de coluna vazia
-     */
+    // Exibe ou remove a mensagem "Nenhum card aqui" na coluna
     updateEmptyMessage(status) {
         const container = this.containers[status];
         if (!container) return;
-
         const existing = container.querySelector('.empty-message');
-        const count = StateManager.getCardsByStatus(status).length;
-
-        if (count === 0) {
-            if (!existing) {
-                const msg = document.createElement('p');
-                msg.className = 'empty-message';
-                msg.textContent = 'Nenhum card aqui';
-                container.appendChild(msg);
-            }
-        } else {
-            if (existing) existing.remove();
+        const empty = StateManager.getCardsByStatus(status).length === 0;
+        if (empty && !existing) {
+            const msg = document.createElement('p');
+            msg.className = 'empty-message';
+            msg.textContent = 'Nenhum card aqui';
+            container.appendChild(msg);
+        } else if (!empty && existing) {
+            existing.remove();
         }
     },
 
     updateAllEmptyMessages() {
-        ['todo', 'doing', 'done'].forEach(status => {
-            this.updateEmptyMessage(status);
-        });
+        ['todo', 'doing', 'done'].forEach(s => this.updateEmptyMessage(s));
+    },
+
+    // RN06 - Desabilita o botão quando o limite total é atingido
+    updateNewCardButton() {
+        const btn = document.getElementById('btnNovoCard');
+        if (!btn) return;
+        const limitReached = StateManager.state.cards.length >= BusinessRules.MAX_CARDS;
+        btn.disabled = limitReached;
+        btn.style.opacity = limitReached ? '0.5' : '';
+        btn.style.cursor = limitReached ? 'not-allowed' : '';
+        btn.title = limitReached ? `Limite de ${BusinessRules.MAX_CARDS} cards atingido` : '';
     },
 
     clearAllCards() {
-        Object.values(this.containers).forEach(container => {
-            container.innerHTML = '';
-        });
+        Object.values(this.containers).forEach(c => c.innerHTML = '');
     },
 
     renderAllCards() {
         this.clearAllCards();
-        StateManager.state.cards.forEach(card => {
-            this.renderCard(card);
-        });
+        StateManager.state.cards.forEach(card => this.renderCard(card));
         this.updateAllCounters();
         this.updateAllEmptyMessages();
+        this.updateNewCardButton();
     },
 
+    // Cria o elemento HTML do card
     createCardElement(card) {
-        const cardElement = document.createElement('div');
-        cardElement.className = 'card';
-        cardElement.id = `card-${card.id}`;
-        cardElement.draggable = true;
-        cardElement.setAttribute('data-id', card.id);
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.id = `card-${card.id}`;
+        el.draggable = true;
+        el.setAttribute('data-id', card.id);
 
-        const textSpan = document.createElement('span');
-        textSpan.className = 'card__text';
-        textSpan.textContent = card.text;
+        const span = document.createElement('span');
+        span.className = 'card__text';
+        span.textContent = card.text;
 
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'card__delete';
-        deleteBtn.innerHTML = '&times;';
-        deleteBtn.title = 'Excluir card';
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            CardManager.deleteCard(card.id);
-        });
+        const btn = document.createElement('button');
+        btn.className = 'card__delete';
+        btn.innerHTML = '&times;';
+        btn.title = 'Excluir card';
+        btn.addEventListener('click', e => { e.stopPropagation(); CardManager.deleteCard(card.id); });
 
-        cardElement.appendChild(textSpan);
-        cardElement.appendChild(deleteBtn);
-
-        return cardElement;
+        el.appendChild(span);
+        el.appendChild(btn);
+        return el;
     },
 
     renderCard(card) {
-        const cardElement = this.createCardElement(card);
+        const el = this.createCardElement(card);
         const container = this.containers[card.status];
-
         if (container) {
-            container.appendChild(cardElement);
-            DragDropManager.setupCardDragEvents(cardElement);
-            CardManager.setupCardClickEvents(cardElement, card.id);
+            container.appendChild(el);
+            DragDropManager.setupCardDragEvents(el);
+            CardManager.setupCardClickEvents(el, card.id);
         }
     }
 };
 
-// ===========================================
-// MÓDULO: Gerenciamento de Drag and Drop
-// ===========================================
+// Gerencia o Drag and Drop entre colunas
 const DragDropManager = {
     draggedCard: null,
 
     init() {
-        Object.values(DOMManager.containers).forEach(container => {
-            container.addEventListener('dragover', this.handleDragOver.bind(this));
-            container.addEventListener('dragenter', this.handleDragEnter.bind(this));
-            container.addEventListener('dragleave', this.handleDragLeave.bind(this));
-            container.addEventListener('drop', this.handleDrop.bind(this));
+        Object.values(DOMManager.containers).forEach(c => {
+            c.addEventListener('dragover', this.handleDragOver.bind(this));
+            c.addEventListener('dragenter', this.handleDragEnter.bind(this));
+            c.addEventListener('dragleave', this.handleDragLeave.bind(this));
+            c.addEventListener('drop', this.handleDrop.bind(this));
         });
     },
 
-    setupCardDragEvents(cardElement) {
-        cardElement.addEventListener('dragstart', this.handleDragStart.bind(this));
-        cardElement.addEventListener('dragend', this.handleDragEnd.bind(this));
+    setupCardDragEvents(el) {
+        el.addEventListener('dragstart', this.handleDragStart.bind(this));
+        el.addEventListener('dragend', this.handleDragEnd.bind(this));
     },
 
     handleDragStart(e) {
@@ -246,10 +248,7 @@ const DragDropManager = {
     handleDragEnd(e) {
         e.target.classList.remove('dragging');
         this.draggedCard = null;
-
-        Object.values(DOMManager.containers).forEach(container => {
-            container.classList.remove('drag-over');
-        });
+        Object.values(DOMManager.containers).forEach(c => c.classList.remove('drag-over'));
     },
 
     handleDragOver(e) {
@@ -259,43 +258,46 @@ const DragDropManager = {
 
     handleDragEnter(e) {
         e.preventDefault();
-        // Remove de todos primeiro, depois aplica só no destino
         Object.values(DOMManager.containers).forEach(c => c.classList.remove('drag-over'));
         const container = e.target.closest('.card-container');
-        if (container) {
-            container.classList.add('drag-over');
-        }
+        if (container) container.classList.add('drag-over');
     },
 
     handleDragLeave(e) {
         const container = e.target.closest('.card-container');
-        if (container && !container.contains(e.relatedTarget)) {
+        if (container && !container.contains(e.relatedTarget))
             container.classList.remove('drag-over');
-        }
     },
 
     handleDrop(e) {
         e.preventDefault();
         const container = e.target.closest('.card-container');
+        if (!container || !this.draggedCard) return;
 
-        if (container && this.draggedCard) {
-            const cardId = parseInt(this.draggedCard.getAttribute('data-id'));
-            const newStatus = container.id;
+        const cardId = parseInt(this.draggedCard.getAttribute('data-id'));
+        const newStatus = container.id;
+        const card = StateManager.state.cards.find(c => c.id === cardId);
+        if (!card) return;
 
-            StateManager.moveCard(cardId, newStatus);
-            container.appendChild(this.draggedCard);
+        // RN03 - Verifica se o card está tentando voltar para coluna anterior
+        const backwardCheck = BusinessRules.canMoveBackward(card.status, newStatus);
+        if (!backwardCheck.ok) { Notify.show(backwardCheck.message); container.classList.remove('drag-over'); return; }
 
-            DOMManager.updateAllCounters();
-            DOMManager.updateAllEmptyMessages();
-
-            container.classList.remove('drag-over');
+        // RN01 - Verifica o limite WIP ao mover para "Fazendo"
+        if (card.status !== newStatus) {
+            const wipCheck = BusinessRules.canMoveToColumn(newStatus);
+            if (!wipCheck.ok) { Notify.show(wipCheck.message); container.classList.remove('drag-over'); return; }
         }
+
+        StateManager.moveCard(cardId, newStatus);
+        container.appendChild(this.draggedCard);
+        DOMManager.updateAllCounters();
+        DOMManager.updateAllEmptyMessages();
+        container.classList.remove('drag-over');
     }
 };
 
-// ===========================================
-// MÓDULO: Gerenciamento de Cards
-// ===========================================
+// Gerencia criação, edição e exclusão de cards
 const CardManager = {
     modal: null,
 
@@ -305,20 +307,19 @@ const CardManager = {
     },
 
     setupModal() {
-        const modalHTML = `
+        document.body.insertAdjacentHTML('beforeend', `
             <div class="modal-overlay" id="modalOverlay">
                 <div class="modal">
                     <h3 class="modal__title" id="modalTitle">Novo Card</h3>
                     <input type="text" class="modal__input" id="modalInput" placeholder="Digite o texto do card...">
+                    <p class="modal__hint">Mínimo de ${BusinessRules.MIN_TITLE_LENGTH} caracteres</p>
                     <div class="modal__actions">
                         <button class="modal__button modal__button--secondary" id="btnCancelar">Cancelar</button>
                         <button class="modal__button modal__button--primary" id="btnSalvar">Salvar</button>
                     </div>
                 </div>
             </div>
-        `;
-
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        `);
 
         this.modal = {
             overlay: document.getElementById('modalOverlay'),
@@ -330,21 +331,13 @@ const CardManager = {
 
         this.modal.btnCancel.addEventListener('click', () => this.closeModal());
         this.modal.btnSave.addEventListener('click', () => this.handleSave());
-        this.modal.overlay.addEventListener('click', (e) => {
-            if (e.target === this.modal.overlay) {
-                this.closeModal();
-            }
-        });
+        this.modal.overlay.addEventListener('click', e => { if (e.target === this.modal.overlay) this.closeModal(); });
 
-        // Fechar com ESC ou salvar com Enter
-        document.addEventListener('keydown', (e) => {
+        // Fecha com ESC ou salva com Enter
+        document.addEventListener('keydown', e => {
             if (!this.modal.overlay.classList.contains('active')) return;
-
-            if (e.key === 'Escape') {
-                this.closeModal();
-            } else if (e.key === 'Enter') {
-                this.handleSave();
-            }
+            if (e.key === 'Escape') this.closeModal();
+            else if (e.key === 'Enter') this.handleSave();
         });
     },
 
@@ -359,6 +352,7 @@ const CardManager = {
     closeModal() {
         this.modal.overlay.classList.remove('active');
         this.modal.input.value = '';
+        this.modal.input.style.borderColor = '';
         this.modal.input.removeAttribute('data-edit-id');
     },
 
@@ -366,18 +360,36 @@ const CardManager = {
         const text = this.modal.input.value.trim();
         const editId = this.modal.input.getAttribute('data-edit-id');
 
+        // Valida campo vazio
         if (!text) {
-            this.modal.input.focus();
             this.modal.input.style.borderColor = '#f44336';
-            setTimeout(() => {
-                this.modal.input.style.borderColor = '';
-            }, 1000);
+            setTimeout(() => this.modal.input.style.borderColor = '', 1000);
+            this.modal.input.focus();
+            return;
+        }
+
+        // RN02 - Valida tamanho mínimo do título
+        const titleCheck = BusinessRules.validateTitle(text);
+        if (!titleCheck.ok) {
+            this.modal.input.style.borderColor = '#f44336';
+            setTimeout(() => this.modal.input.style.borderColor = '', 1000);
+            Notify.show(titleCheck.message);
             return;
         }
 
         if (editId) {
+            const card = StateManager.state.cards.find(c => c.id === parseInt(editId));
+            // RN05 - Verifica duplicidade ao editar
+            const dupCheck = BusinessRules.hasDuplicateTitle(text, card.status, parseInt(editId));
+            if (!dupCheck.ok) { Notify.show(dupCheck.message); return; }
             this.editCard(parseInt(editId), text);
         } else {
+            // RN06 - Verifica limite total de cards
+            const limitCheck = BusinessRules.canAddCard();
+            if (!limitCheck.ok) { Notify.show(limitCheck.message); return; }
+            // RN05 - Verifica duplicidade ao criar
+            const dupCheck = BusinessRules.hasDuplicateTitle(text, 'todo');
+            if (!dupCheck.ok) { Notify.show(dupCheck.message); return; }
             this.createCard(text);
         }
 
@@ -385,22 +397,22 @@ const CardManager = {
     },
 
     setupNewCardButton() {
-        const btnNovoCard = document.getElementById('btnNovoCard');
-        if (btnNovoCard) {
-            btnNovoCard.addEventListener('click', () => {
+        const btn = document.getElementById('btnNovoCard');
+        if (btn) {
+            btn.addEventListener('click', () => {
+                const limitCheck = BusinessRules.canAddCard();
+                if (!limitCheck.ok) { Notify.show(limitCheck.message); return; }
                 this.openModal('Novo Card');
             });
         }
     },
 
-    setupCardClickEvents(cardElement, cardId) {
-        cardElement.addEventListener('dblclick', (e) => {
+    // Abre modal de edição ao dar duplo clique no card
+    setupCardClickEvents(el, cardId) {
+        el.addEventListener('dblclick', e => {
             if (e.target.classList.contains('card__delete')) return;
-
             const card = StateManager.state.cards.find(c => c.id === cardId);
-            if (card) {
-                this.openModal('Editar Card', card.text, card.id);
-            }
+            if (card) this.openModal('Editar Card', card.text, card.id);
         });
     },
 
@@ -409,65 +421,52 @@ const CardManager = {
         DOMManager.renderCard(card);
         DOMManager.updateCounter(card.status);
         DOMManager.updateEmptyMessage(card.status);
+        DOMManager.updateNewCardButton();
     },
 
     editCard(id, newText) {
         const card = StateManager.updateCard(id, newText);
         if (card) {
-            const cardElement = document.getElementById(`card-${id}`);
-            if (cardElement) {
-                cardElement.querySelector('.card__text').textContent = newText;
-            }
+            const el = document.getElementById(`card-${id}`);
+            if (el) el.querySelector('.card__text').textContent = newText;
         }
     },
 
+    // RN04 - Pede confirmação antes de excluir o card
     deleteCard(id) {
-        const cardElement = document.getElementById(`card-${id}`);
+        if (!confirm('Tem certeza que deseja excluir este card?')) return;
+
+        const el = document.getElementById(`card-${id}`);
         const status = StateManager.state.cards.find(c => c.id === id)?.status;
 
-        if (cardElement) {
-            cardElement.style.transition = 'opacity 0.15s, transform 0.15s';
-            cardElement.style.opacity = '0';
-            cardElement.style.transform = 'scale(0.95)';
+        if (el) {
+            el.style.transition = 'opacity 0.15s, transform 0.15s';
+            el.style.opacity = '0';
+            el.style.transform = 'scale(0.95)';
             setTimeout(() => {
-                cardElement.remove();
+                el.remove();
                 StateManager.deleteCard(id);
                 DOMManager.updateAllCounters();
-                if (status) DOMManager.updateEmptyMessage(status);
+                DOMManager.updateAllEmptyMessages();
+                DOMManager.updateNewCardButton();
             }, 150);
         } else {
             StateManager.deleteCard(id);
             DOMManager.updateAllCounters();
+            DOMManager.updateNewCardButton();
         }
     }
 };
 
-// ===========================================
-// INICIALIZAÇÃO DA APLICAÇÃO
-// ===========================================
+// Inicializa todos os módulos quando o DOM estiver pronto
 const App = {
     init() {
-        console.log('🚀 Iniciando Quadro Kanban...');
-
         StateManager.load();
         DOMManager.init();
         DragDropManager.init();
         CardManager.init();
         DOMManager.renderAllCards();
-
-        console.log('✅ Quadro Kanban inicializado com sucesso!');
-        console.log(`📊 Total de cards: ${StateManager.state.cards.length}`);
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    App.init();
-});
-
-window.KanbanApp = {
-    StateManager,
-    DOMManager,
-    DragDropManager,
-    CardManager,
-    App
-};
+document.addEventListener('DOMContentLoaded', () => App.init());
